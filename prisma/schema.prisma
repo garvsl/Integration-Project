@@ -54,10 +54,9 @@ model MondayAuthCredentials {
   userId Int  @unique
 
   accessToken  String
-  refreshToken String
   scope        String
   tokenType    String
-  expiryDate   BigInt
+  // No expiration date, and no refresh.
 
   dbCreatedAt DateTime @default(now())
   dbUpdatedAt DateTime @default(now()) @updatedAt
