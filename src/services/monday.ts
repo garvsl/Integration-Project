@@ -1,31 +1,7 @@
-import { google, drive_v3 } from "googleapis";
-
 import prisma from "loaders/prisma";
-import { User, File } from "@prisma/client";
 
 
 const SCOPES = "me:read updates:read webhooks:write"
-
-const oAuthClient = () => {
-  return new google.auth.OAuth2({
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    redirectUri: process.env.GOOGLE_REDIRECT_URI,
-    forceRefreshOnFailure: true,
-  });
-};
-
-export const oAuthClientWithCredentials = (credentials: {
-  access_token: string;
-  refresh_token: string;
-  scope: string;
-  token_type: string;
-  expiryDate: number;
-}) => {
-  const oAuth2Client = oAuthClient();
-  oAuth2Client.setCredentials(credentials);
-  return oAuth2Client;
-};
 
 export const getAccessTokenUrl = () => {
   const authUrl = `https://auth.monday.com/oauth2/authorize?client_id=${process.env.MONDAY_CLIENT_ID}?redirect_uri=${process.env.MONDAY_REDIRECT_URI}?scope=${SCOPES}`;
