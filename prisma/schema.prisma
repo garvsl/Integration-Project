@@ -100,8 +100,8 @@ model GoogleDriveFile {
 model Comment {
   // Sets default to cuid but gets overwritten by the id from middleware
   id     String @id @default(cuid())
-  file   File   @relation("file", fields: [fileId], references: [id], onDelete: Cascade)
-  fileId Int
+  file   File?   @relation("file", fields: [fileId], references: [id], onDelete: Cascade)
+  fileId Int?
 
   author   CommentAuthor @relation(fields: [authorId], references: [id])
   authorId Int
