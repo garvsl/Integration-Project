@@ -31,6 +31,20 @@ CREATE TABLE "GAuthCredentials" (
 );
 
 -- CreateTable
+CREATE TABLE "MondayAuthCredentials" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "mondayId" INTEGER NOT NULL,
+    "accessToken" TEXT NOT NULL,
+    "scope" TEXT NOT NULL,
+    "tokenType" TEXT NOT NULL,
+    "dbCreatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "dbUpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "MondayAuthCredentials_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "File" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -61,7 +75,7 @@ CREATE TABLE "GoogleDriveFile" (
 -- CreateTable
 CREATE TABLE "Comment" (
     "id" TEXT NOT NULL,
-    "fileId" INTEGER NOT NULL,
+    "fileId" INTEGER,
     "authorId" INTEGER NOT NULL,
     "platform" TEXT,
     "platformId" TEXT,
@@ -105,6 +119,9 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX "GAuthCredentials_userId_key" ON "GAuthCredentials"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "MondayAuthCredentials_userId_key" ON "MondayAuthCredentials"("userId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "GoogleDriveFile_fileId_key" ON "GoogleDriveFile"("fileId");
 
 -- CreateIndex
@@ -130,6 +147,9 @@ CREATE INDEX "_FileToUser_B_index" ON "_FileToUser"("B");
 
 -- AddForeignKey
 ALTER TABLE "GAuthCredentials" ADD CONSTRAINT "GAuthCredentials_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MondayAuthCredentials" ADD CONSTRAINT "MondayAuthCredentials_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GoogleDriveFile" ADD CONSTRAINT "GoogleDriveFile_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "File"("id") ON DELETE CASCADE ON UPDATE CASCADE;

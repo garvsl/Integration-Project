@@ -53,6 +53,7 @@ model MondayAuthCredentials {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int  @unique
 
+  mondayId     String
   accessToken  String
   scope        String
   tokenType    String

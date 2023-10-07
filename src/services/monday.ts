@@ -1,5 +1,15 @@
 import prisma from "loaders/prisma";
+import mondaySdk from "monday-sdk-js";
 
+interface MondayData {
+    data: {
+      [key: string]: any;
+    };
+    account_id?: number;
+  }
+  
+const monday = mondaySdk();
+monday.setApiVersion("2023-10");
 
 const SCOPES = "me:read updates:read webhooks:write"
 
@@ -44,28 +54,17 @@ export const authorize = (code: string) => {
 
         let query = "query { me {  name id email}}";
         
-        
-        const responseForData = await fetch ("https://api.monday.com/v2", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization' : `${receivedData.access_token}`,
-            'API-Version' : '2023-04'
-            },
-        body: JSON.stringify({
-         query
-        })
-        });
-        let data = await responseForData.json();
-        data = data.data.me;
+        monday.setToken(receivedData.access_token)
+        const options = {token:receivedData.access_token}
+        const mondayData:MondayData = await monday.api(query)
+        const data = mondayData.data.me;
 
         let user = await prisma.user.findUnique({
             where: {
                 email: data.email,
             },
         });
-       
-        // Would you want access token to be hashed before being stored in db?
+
 
         if(!user){
             user = await prisma.user.create({
@@ -74,6 +73,7 @@ export const authorize = (code: string) => {
             name: data.name,
             mondayAuthCredentials: {
                 create: {
+                mondayId:data.id,
                 accessToken: receivedData.access_token,
                 scope: receivedData.scope,
                 tokenType: receivedData.token_type,
@@ -88,7 +88,7 @@ export const authorize = (code: string) => {
                 userId: user.id,
                 },
             });
-            // Would this be needed? Since the token cant expire.
+
             if (!mondayAuthCredentials) {
                 user = await prisma.user.update({
                 where: {
@@ -98,6 +98,7 @@ export const authorize = (code: string) => {
                     name: data.name,
                     mondayAuthCredentials: {
                     create: {
+                        mondayId:data.id,
                         accessToken: receivedData.access_token,
                         scope: receivedData.scope,
                         tokenType: receivedData.token_type,
@@ -115,6 +116,7 @@ export const authorize = (code: string) => {
                         name: data.name,
                         mondayAuthCredentials: {
                         update: {
+                            mondayId:data.id,
                             accessToken: receivedData.access_token,
                             scope: receivedData.scope,
                             tokenType: receivedData.token_type,
@@ -142,21 +144,18 @@ export const authorize = (code: string) => {
   ) => {
 
     try{
-
-// Not really sure what platform name and some other stuff arre intended for, wasnt sure if I was supposed to change the db to make them optional but kinda just filled in with buffer info
-
     const existingComment:any = await prisma.comment.findFirst({
       where: {
         platform,
         platformId: comment.id,
       },
     });
-  
-    console.log(existingComment)
 
-    // const isAuthorAUser = comment?.creator.name
-    //   ? await prisma.user.findFirst({ where: { name: user.name } })
-    //   : null;
+    console.log("comment:", comment)
+    const isAuthorAUser = comment?.creator?.id == user.mondayId
+    ? await prisma.user.findFirst({ where: { id: user.userId } })
+    : null;
+  
   
     if (existingComment) {
       if (
@@ -171,21 +170,19 @@ export const authorize = (code: string) => {
             createdAt: comment.created_at,
             updatedAt: comment.updated_at,
             platform,
-            author:
-            //  isAuthorAUser
-            //   ? {
-            //       create: {
-            //         user: {
-            //           connect: { id: isAuthorAUser.id },
-            //         },
-            //       },
-            //     }
-            //   : 
-              {
-                  create: {
-                    platformName: comment?.creator?.name,
+            author: isAuthorAUser
+            ? {
+                create: {
+                  user: {
+                    connect: { id: isAuthorAUser.id },
                   },
                 },
+              }
+            : {
+                create: {
+                  platformName: comment?.creator?.name,
+                },
+              },
           },
         });
         console.log("Updated a comment in db:", newComment)
@@ -197,31 +194,24 @@ export const authorize = (code: string) => {
 
       const newComment = await prisma.comment.create({
         data: {
-        // file: {
-        //     connect: {
-        //         id: comment.creator.id,
-        //     },
-        // },
           platform,
           platformId: comment.id,
           content: comment.body,
           createdAt: comment.created_at,
           updatedAt: comment.updated_at,
-          author: 
-        //   isAuthorAUser
-            // ? {
-            //     create: {
-            //       user: {
-            //         connect: { id: isAuthorAUser.id },
-            //       },
-            //     },
-            //   }
-            // : 
-            {
-                create: {
-                  platformName: comment.creator.name,
+          author: isAuthorAUser
+          ? {
+              create: {
+                user: {
+                  connect: { id: isAuthorAUser.id },
                 },
               },
+            }
+          : {
+              create: {
+                platformName: comment?.creator?.name,
+              },
+            },
         },
       });
       console.log("Created new comment in db:", newComment)
@@ -236,8 +226,6 @@ export const authorize = (code: string) => {
   export const getComments = async (
     email:string
   ): Promise<void> => {
-
-    // Gives the users own comments too, not sure if this is wanted, can probably filter them out.
     try{
 
         const user = await prisma.user.findUnique({
@@ -257,18 +245,7 @@ export const authorize = (code: string) => {
         // body is how the comment was formatted with html
         let query = "query {updates { id body text_body updated_at created_at assets{url} creator{name id} replies{body text_body updated_at created_at creator {name} }  }}";
 
-        const response = await fetch ("https://api.monday.com/v2", {
-        method: 'POST',
-        headers: {
-        'Content-Type': 'application/json',
-        'Authorization' : `${mondayAuthCredentials.accessToken}`
-        },
-        body: JSON.stringify({
-            query 
-        })
-        })
-        
-        let comments = await response.json()
+        let comments:any = await monday.api(query)
         comments = comments.data.updates;
 
         for (const comment of comments) {
